@@ -129,9 +129,9 @@ class process_dataset(object):
 
             for itr in range(self.t_red):
                 # Read in velocities
-                uice = self.data.U[it+itr,:,:]
-                vice = self.data.V[it+itr,:,:]
-                aice = self.data.A[it+itr,:,:]
+                uice = np.array(self.data.U[it+itr,:,:])
+                vice = np.array(self.data.V[it+itr,:,:])
+                aice = np.array(self.data.A[it+itr,:,:])
         
                 # Check if deformation rates are given
                 if hasattr(self.data,'div') and hasattr(self.data,'shr') and hasattr(self.data,'vor'):
@@ -150,17 +150,17 @@ class process_dataset(object):
 
                 eps_tot = np.sqrt(div**2+shr**2)
 
-                eps_tot = eps_tot.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1))
+                eps_tot = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
 
                 # Mask Arctic basin and shrink array
-                eps_tot = eps_tot.where(self.mask[1:-1,1:-1])
+                eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
                 eps_tot = eps_tot[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2:self.red_fac,
                                   max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2:self.red_fac]
                 eps_tot[0,:] = np.nan; eps_tot[-1,:] = np.nan
                 eps_tot[:,0] = np.nan; eps_tot[:,-1] = np.nan
                 eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
                 eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
-                
+
                 self.eps_tot_list.append(np.array(eps_tot))
     
 
