@@ -194,7 +194,7 @@ class process_dataset(object):
                                 np.array(vor[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2:self.red_fac,
                                        max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2:self.red_fac]))
 
-            lkf_T = [j.T for j in lkf]
+            lkf_T = np.array([j.T for j in lkf], dtype='object')
             np.save(self.lkfpath.joinpath('lkf_%s_%03i.npy' %(self.netcdf_file.split('/')[-1].split('.')[0],(it+1))), lkf_T)
             
             
