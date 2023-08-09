@@ -158,7 +158,7 @@ def nansum_neighbours_jax(img):
     size = np.shape(img) - np.array([2,2])
     shape = np.zeros((size[0],size[1]), dtype='int32')
 
-    img = np.where(img>0,img,0)
+    img = np.where(img!=0,img,0)
 
     return jax_sum_body(img, shape)
 
