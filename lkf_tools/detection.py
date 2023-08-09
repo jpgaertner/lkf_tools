@@ -11,6 +11,9 @@ __author__ = "Nils Hutter"
 __author_email__ = "nils.hutter@awi.de"
 
 
+from jax import jit
+import jax.numpy as jnp
+
 import numpy as np
 import matplotlib.pylab as plt
 import os
@@ -148,6 +151,26 @@ def nansum_neighbours(img):
 def nanmean_neighbours(img):
     return np.nanmean(cut_neighbours(img),axis=(2,3))
 
+
+
+def nansum_neighbours_jax(img):
+
+    size = np.shape(img) - np.array([2,2])
+    shape = np.zeros((size[0],size[1]), dtype='int32')
+
+    img = np.where(img>0,img,0)
+
+    return jax_sum_body(img, shape)
+
+@jit
+def jax_sum_body(img, shape):
+
+    summed = img + jnp.roll(img,-1,axis=1) + jnp.roll(img,-2,axis=1)
+    summed = summed + jnp.roll(summed,-1,axis=0) + jnp.roll(summed,-2,axis=0)
+
+    cut = shape.at[:,:].set(summed[:-2,:-2])
+
+    return cut
     
 
 def detect_segments(lkf_thin,eps_thres=0.1,max_ind=500):
@@ -259,7 +282,7 @@ def detect_segments(lkf_thin,eps_thres=0.1,max_ind=500):
         nodetect_intm[1:-1,1:-1] = nodetect.copy()
     
         # Deactivate pixels with more than one neighbour and activate neighbours
-        num_neighbours = nansum_neighbours(nodetect_intm)
+        num_neighbours = nansum_neighbours_jax(nodetect_intm)
 
         deactivate_segs_muln = np.where(num_neighbours[seg_append[:,0][mask].astype('int'),
                                                   seg_append[:,1][mask].astype('int')].squeeze() > 1)[0]
