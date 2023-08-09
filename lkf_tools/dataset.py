@@ -32,7 +32,7 @@ class process_dataset(object):
     Class to process deformation and drift dataset to LKF data set.
     """
     def __init__(self,netcdf_file,output_path='./',xarray=None,
-                 max_kernel=5,min_kernel=1, dog_thres=0.01,skeleton_kernel=0,
+                 max_kernel=5,min_kernel=1, dog_thres=0.4,skeleton_kernel=0,
                  dis_thres=4,ellp_fac=2,angle_thres=45,eps_thres=1.25,lmin=3,
                  latlon=True,return_eps=True,red_fac=1,t_red=1):
         """
