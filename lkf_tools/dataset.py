@@ -273,3 +273,35 @@ class process_dataset(object):
             np.save(self.track_output_path.joinpath('lkf_tracked_pairs_%s_to_%s' %(self.lkf_filelist[ilkf][4:-4],
                                                                  self.lkf_filelist[ilkf+1][4:-4])),
                     tracked_pairs)
+    
+    def calc_eps_tot(self, ind):
+        '''calculate the total deformation rate at
+        a specifc time step from velocity data
+        (copied from the detect_lkfs function)
+        '''
+        uice = np.array(self.data.U[ind,:,:])
+        vice = np.array(self.data.V[ind,:,:])
+        aice = np.array(self.data.A[ind,:,:])
+
+        dudx = ((uice[2:,:]-uice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
+        dvdx = ((vice[2:,:]-vice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
+        dudy = ((uice[:,2:]-uice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
+        dvdy = ((vice[:,2:]-vice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
+
+        div = (dudx + dvdy) * 3600. *24. # in day^-1
+        shr = np.sqrt((dudx-dvdy)**2 + (dudy + dvdx)**2) * 3600. *24. # in day^-1
+        vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
+
+        eps_tot = np.sqrt(div**2+shr**2)
+        eps_tot = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
+
+        # Mask Arctic basin and shrink array
+        eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
+        eps_tot = eps_tot[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2,
+                          max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2]
+        eps_tot[0,:] = np.nan; eps_tot[-1,:] = np.nan
+        eps_tot[:,0] = np.nan; eps_tot[:,-1] = np.nan
+        eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
+        eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
+
+        return eps_tot
