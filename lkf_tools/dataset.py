@@ -305,3 +305,77 @@ class process_dataset(object):
         eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
 
         return eps_tot
+    
+    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True):
+        
+        eps_tot = self.calc_eps_tot(ind)
+
+        max_kernel = max_kernel*(1+self.corfac)*0.5
+        min_kernel = min_kernel*(1+self.corfac)*0.5
+
+        skeleton_kernel= self.skeleton_kernel
+
+        lkf_detect_multday = np.zeros(eps_tot.shape)
+
+        fig, ax = plt.subplots(2,2, figsize=(12,10))
+
+        im1 = ax[0,0].pcolormesh(eps_tot,vmin=0,vmax=0.4)
+        ax[0,0].set_title('total deformation')
+        plt.colorbar(im1, ax=ax[0,0])
+
+        if use_eps:
+            proc_eps = eps_tot
+        else:
+            ## take natural logarithm
+            proc_eps = np.log(eps_tot)
+        proc_eps[~np.isfinite(proc_eps)] = np.NaN
+        if not use_eps:
+            ## apply histogram equalization
+            proc_eps = hist_eq(proc_eps)
+
+        ## apply DoG filter
+        lkf_detect = DoG_leads(proc_eps,max_kernel,min_kernel)
+        im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=0.4,cmap='viridis')
+        ax[0,1].set_title('difference of gaussian filter (DoG)')
+        plt.colorbar(im2, ax=ax[0,1])
+
+        ### apply threshold: filter for DoG > dog_thres
+        lkf_detect = (lkf_detect > dog_thres).astype('float')
+        lkf_detect[~np.isfinite(proc_eps)] = np.NaN
+        lkf_detect_multday += lkf_detect
+
+        lkf_detect = (lkf_detect_multday > 0)
+
+        im3 = ax[1,0].pcolormesh(lkf_detect,cmap='Greys')
+        ax[1,0].set_title('threshold applied to DoG')
+
+        # Compute average total deformation
+        eps_tot = np.nanmean(np.stack(eps_tot),axis=0)
+
+        ### Apply morphological thinning
+        if skeleton_kernel==0:
+            lkf_thin =  skimage.morphology.skeletonize(lkf_detect).astype('float')
+        else:
+            lkf_thin = skeleton_along_max(eps_tot,lkf_detect,kernelsize=skeleton_kernel).astype('float')
+            lkf_thin[:2,:] = 0.; lkf_thin[-2:,:] = 0.
+            lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
+
+        im4 = ax[1,1].pcolormesh(lkf_thin, cmap='Greys')
+        ax[1,1].set_title('morphological thinning')
+
+        print('''
+        parameters to adjust (ind is the timestep):
+        dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
+        min_kernel: smallest scale of features to be detected (default = 1 pixel)
+        max_kernel: largest scale of features to be detected (default = 5 pixel)
+                    (with this, the background deformation is calculated:
+                    DoG filter = blurred image using min_kernel - blurred image using max_kernel)
+        use_eps   : flag for using the total deformation (if True, default)
+                    or its natural logarithm and a histogram equalization (if False)
+                    (the latter highlights local differences across scales and thus enhances contrast in regions of low deformation)
+
+        this function just creates these plots. if you want to use other values than the default ones,
+        you need to adjust them in the process_dataset function when initializing the lkf_data object.
+        ''')
+
+        fig.tight_layout()
