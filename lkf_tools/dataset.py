@@ -258,8 +258,30 @@ class process_dataset(object):
             for ilkf1,iseg in enumerate(lkf1):
                 lkf1_l[ilkf1] = iseg[:,:2]
 
+            print('shape', type(lkf1_l), np.shape(lkf1_l))
+            for i in range(len(lkf1_l)):
+                pass#print('t',np.shape(lkf1_l[i]))
+
+            s = []
+            for i in range(len(lkf1_l)):
+                s.append(np.shape(lkf1_l[i])[0])
+
+            for i in range(len(lkf1_l)):
+                for k in range(np.max(s)):
+                    if np.shape(lkf1_l[i])[0] < np.max(s):
+                        lkf1_l[i] = np.array(np.vstack((lkf1_l[i],[[0,0]])))
+
+            lkf1_l = np.array(list(lkf1_l), dtype='float')
+            
+            # ----------------------- Define index grid -----------------------------
+
+            xgi = np.linspace(1,self.nx,self.nx)-1
+            ygi = np.linspace(1,self.ny,self.ny)-1
+            XGi,YGi = np.meshgrid(xgi,ygi)
+
             # Compute tracking
-            tracked_pairs = track_lkf(lkf0_df, lkf1_l, self.nx, self.ny, 
+            tracked_pairs = track_lkf(lkf0_df, lkf1_l, self.nx, self.ny,
+                                      xgi, ygi, XGi, YGi,
                                       thres_frac=0.75, min_overlap=4,
                                       overlap_thres=1.5,angle_thres=25)
 
