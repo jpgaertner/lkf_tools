@@ -11,7 +11,7 @@ __author__ = "Nils Hutter"
 __author_email__ = "nils.hutter@awi.de"
 
 
-
+from jax import jit
 
 import numpy as np
 import matplotlib.pylab as plt
@@ -70,7 +70,11 @@ def compute_MHD_segment(A,B,return_overlap=False,overlap_thres=2,angle_thres=45,
 
 # ------------------- 1. Tracking function 
 
-def track_lkf(lkf0_d, lkf1, nx, ny, thres_frac=0.75, min_overlap=4,first_overlap=False,overlap_thres=1.5,angle_thres=25.,search_area_expansion=1):
+@jit
+def track_lkf(lkf0_d, lkf1, nx, ny,
+              xgi, ygi, XGi, YGi,
+              thres_frac=0.75, min_overlap=4, first_overlap=False,
+              overlap_thres=1.5,angle_thres=25.,search_area_expansion=1):
     """Tracking function for LKFs
 
     Input: lkf0_d: advected detected LKF features
@@ -78,12 +82,6 @@ def track_lkf(lkf0_d, lkf1, nx, ny, thres_frac=0.75, min_overlap=4,first_overlap
            
     Output: lkf_track_pairs: List with pairs of indexes to LKFs in lkf0 that are tracked in lkf1
     """
-
-    # ----------------------- Define index grid -----------------------------
-
-    xgi = np.linspace(1,nx,nx)-1
-    ygi = np.linspace(1,ny,ny)-1
-    XGi,YGi = np.meshgrid(xgi,ygi)
     
 
     # -------------- First rough estimate of drifted LKFs -------------------
