@@ -94,9 +94,9 @@ class process_dataset(object):
         
 
         # Generate Arctic Basin mask
-        self.mask = ((((self.lon > -120) & (self.lon < 100)) & (self.lat >= 70)) |
-                ((self.lon <= -120) & (self.lat >= 60)) |
-                ((self.lon >= 100) & (self.lat >= 60)))
+        self.mask = ((((self.lon > -120) & (self.lon < 100)) & (self.lat >= 80)) |
+                ((self.lon <= -120) & (self.lat >= 70)) |
+                ((self.lon >= 100) & (self.lat >= 70)))
         self.index_x = np.where(np.sum(self.mask[1:-1,1:-1],axis=0)>0)
         self.index_y = np.where(np.sum(self.mask[1:-1,1:-1],axis=1)>0)
 
