@@ -121,11 +121,11 @@ class process_dataset(object):
         else:
             self.indexes = indexes
         
+        self.eps_tot_list = np.zeros_like(self.indexes, dtype='object')
+        
         for it in [int(j) for j in self.indexes if j+1 not in self.ind_detect]:
             
             print("Compute deformation rates and detect features for day %i" %(it+1))
-        
-            self.eps_tot_list = []
 
             for itr in range(self.t_red):
                 # Read in velocities
@@ -161,8 +161,7 @@ class process_dataset(object):
                 eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
                 eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
 
-                self.eps_tot_list.append(np.array(eps_tot))
-    
+                self.eps_tot_list[it] = eps_tot
 
             # Apply detection algorithm
             # Correct detection parameters for different resolution
@@ -170,7 +169,7 @@ class process_dataset(object):
 
             # Detect features
             print('Start detection routines')
-            lkf = lkf_detect_eps_multday(self.eps_tot_list,max_kernel=self.max_kernel*(1+self.corfac)*0.5,
+            lkf = lkf_detect_eps_multday([self.eps_tot_list[it]],max_kernel=self.max_kernel*(1+self.corfac)*0.5,
                                          min_kernel=self.min_kernel*(1+self.corfac)*0.5,
                                          dog_thres=self.dog_thres,dis_thres=self.dis_thres*self.corfac,
                                          ellp_fac=self.ellp_fac,angle_thres=self.angle_thres,
@@ -274,41 +273,11 @@ class process_dataset(object):
                                                                  self.lkf_filelist[ilkf+1][4:-4])),
                     tracked_pairs)
     
-    def calc_eps_tot(self, ind):
-        '''calculate the total deformation rate at
-        a specifc time step from velocity data
-        (copied from the detect_lkfs function)
-        '''
-        uice = np.array(self.data.U[ind,:,:])
-        vice = np.array(self.data.V[ind,:,:])
-        aice = np.array(self.data.A[ind,:,:])
-
-        dudx = ((uice[2:,:]-uice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
-        dvdx = ((vice[2:,:]-vice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
-        dudy = ((uice[:,2:]-uice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
-        dvdy = ((vice[:,2:]-vice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
-
-        div = (dudx + dvdy) * 3600. *24. # in day^-1
-        shr = np.sqrt((dudx-dvdy)**2 + (dudy + dvdx)**2) * 3600. *24. # in day^-1
-        vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
-
-        eps_tot = np.sqrt(div**2+shr**2)
-        eps_tot = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
-
-        # Mask Arctic basin and shrink array
-        eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
-        eps_tot = eps_tot[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2,
-                          max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2]
-        eps_tot[0,:] = np.nan; eps_tot[-1,:] = np.nan
-        eps_tot[:,0] = np.nan; eps_tot[:,-1] = np.nan
-        eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
-        eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
-
-        return eps_tot
+    
     
     def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True):
         
-        eps_tot = self.calc_eps_tot(ind)
+        eps_tot = self.eps_tot_list[ind]
 
         max_kernel = max_kernel*(1+self.corfac)*0.5
         min_kernel = min_kernel*(1+self.corfac)*0.5
@@ -372,7 +341,8 @@ class process_dataset(object):
                     DoG filter = blurred image using min_kernel - blurred image using max_kernel)
         use_eps   : flag for using the total deformation (if True, default)
                     or its natural logarithm and a histogram equalization (if False)
-                    (the latter highlights local differences across scales and thus enhances contrast in regions of low deformation)
+                    (the latter highlights local differences across scales and thus enhances contrast in regions of low
+                    deformation)
 
         this function just creates these plots. if you want to use other values than the default ones,
         you need to adjust them in the process_dataset function when initializing the lkf_data object.
