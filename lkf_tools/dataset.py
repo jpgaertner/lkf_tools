@@ -101,13 +101,13 @@ class process_dataset(object):
         self.index_y = np.where(np.sum(self.mask[1:-1,1:-1],axis=1)>0)
 
 
-    def detect_lkfs(self,indexes=None,force_redetect=False):
+    def detect_lkfs(self,indexes=None,force_redetect=False,keep_eps_tot=False):
         """
         Detects LKFs in data set given in netcdf file
         
         :param indexes: time indexes that should be detected. If None all time steps are detected
         """
-        
+
         # Check for already dectected features
         if force_redetect:
             self.lkf_filelist = [i for i in os.listdir(self.lkfpath) if i.startswith('lkf') and i.endswith('.npy')]
@@ -120,12 +120,18 @@ class process_dataset(object):
             self.indexes = np.arange(self.time.size/self.t_red)
         else:
             self.indexes = indexes
-        
-        self.eps_tot_list = np.zeros_like(self.indexes, dtype='object')
+
+        # if true, the total deformation is saved at every time step to the lkf_data object
+        # if false, it is only saved for the last time step (much more memory efficient)
+        if keep_eps_tot:
+            self.eps_tot_list = np.zeros_like(self.indexes, dtype='object')
         
         for it in [int(j) for j in self.indexes if j+1 not in self.ind_detect]:
             
             print("Compute deformation rates and detect features for day %i" %(it+1))
+
+            if not keep_eps_tot:
+                self.eps_tot_list = []
 
             for itr in range(self.t_red):
                 # Read in velocities
@@ -161,7 +167,12 @@ class process_dataset(object):
                 eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
                 eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
 
-                self.eps_tot_list[it] = eps_tot
+                if keep_eps_tot:
+                    self.eps_tot_list[it] = eps_tot
+                    input_detect = [self.eps_tot_list[it]]
+                else:
+                    self.eps_tot_list.append(eps_tot)
+                    input_detect = self.eps_tot_list
 
             # Apply detection algorithm
             # Correct detection parameters for different resolution
@@ -169,7 +180,7 @@ class process_dataset(object):
 
             # Detect features
             print('Start detection routines')
-            lkf = lkf_detect_eps_multday([self.eps_tot_list[it]],max_kernel=self.max_kernel*(1+self.corfac)*0.5,
+            lkf = lkf_detect_eps_multday(input_detect,max_kernel=self.max_kernel*(1+self.corfac)*0.5,
                                          min_kernel=self.min_kernel*(1+self.corfac)*0.5,
                                          dog_thres=self.dog_thres,dis_thres=self.dis_thres*self.corfac,
                                          ellp_fac=self.ellp_fac,angle_thres=self.angle_thres,
