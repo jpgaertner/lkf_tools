@@ -248,6 +248,7 @@ class process_dataset(object):
 
             # Read LKFs
             lkf1 = np.load(self.lkfpath.joinpath(self.lkf_filelist[ilkf+1]),allow_pickle=True)
+
             # lkf1_l = []
             # for ilkf,iseg in enumerate(lkf1):
             #     lkf1_l.append(iseg[:,:2])
@@ -258,10 +259,8 @@ class process_dataset(object):
             for ilkf1,iseg in enumerate(lkf1):
                 lkf1_l[ilkf1] = iseg[:,:2]
 
-            print('shape', type(lkf1_l), np.shape(lkf1_l))
-            for i in range(len(lkf1_l)):
-                pass#print('t',np.shape(lkf1_l[i]))
-
+            # put lkf1_l into a homogeneous shape in order to convert it to
+            # dtype float so it can be used in a jitted function
             s = []
             for i in range(len(lkf1_l)):
                 s.append(np.shape(lkf1_l[i])[0])
