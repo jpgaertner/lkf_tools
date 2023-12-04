@@ -15,6 +15,7 @@ from jax import jit
 
 import numpy as np
 import matplotlib.pylab as plt
+from time import time
 
 from .detection import *
 
@@ -68,9 +69,35 @@ def compute_MHD_segment(A,B,return_overlap=False,overlap_thres=2,angle_thres=45,
 
 
 
-# ------------------- 1. Tracking function 
+# ------------------- 1. Tracking function
 
 @jit
+def calc_area_ravel(orth_area_shape, search_area_shape, xgi_shape,
+                    orth_area, search_area):
+
+    orth_area_ravel = []
+    for io in range(orth_area_shape):
+        orth_area_ravel.append(np.ravel_multi_index(orth_area[io,:].astype('int'),
+                                                xgi_shape))
+    search_area_ravel = []
+    for io in range(search_area_shape):
+        search_area_ravel.append(np.ravel_multi_index(search_area[io,:].astype('int'),
+                                                  xgi_shape))
+
+    search_area_ravel = list(set(search_area_ravel).intersection(orth_area_ravel))
+    search_area = np.zeros((len(search_area_ravel),2))
+
+    return orth_area_ravel, search_area_ravel, search_area
+                                                 
+
+@jit
+def calc_area(search_area_shape, search_area_ravel, search_area, xgi_shape):
+    for io in range(search_area_shape):
+        search_area[io,:] = np.unravel_index(search_area_ravel[io],xgi_shape)
+
+    return search_area
+
+#@jit
 def track_lkf(lkf0_d, lkf1, nx, ny,
               xgi, ygi, XGi, YGi,
               thres_frac=0.75, min_overlap=4, first_overlap=False,
@@ -85,7 +112,7 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
     
 
     # -------------- First rough estimate of drifted LKFs -------------------
-
+    t0 = time()
     lkf_track_pairs = []
     #thres_frac = 0.75
     #min_overlap = 4
@@ -93,11 +120,15 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
     for ilkf,iseg_d in enumerate(lkf0_d):
 
         if ~np.any(np.isnan(iseg_d)):
+
+            print(1, time()-t0)
+                
             # Define search area
             search_area = np.concatenate([np.floor(iseg_d[:,:2]),np.ceil(iseg_d[:,:2]),
                                           np.vstack([np.floor(iseg_d)[:,0],np.ceil(iseg_d)[:,1]]).T,
                                           np.vstack([np.ceil(iseg_d)[:,0],np.floor(iseg_d)[:,1]]).T],
                                          axis=0) # Floor and ceil broken indexes
+            print(2,time()-t0)
             # Broadening of search area
             #search_area_expansion = 1 # Number of cell for which the search area is expanded to be consider differences in the morphological thinning
             for i in range(search_area_expansion):
@@ -119,7 +150,7 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
                                                                           np.ones(n_rows).reshape((n_rows,1))],axis=1),
                                               search_area+np.concatenate([-np.ones(n_rows).reshape((n_rows,1)),
                                                                           -np.ones(n_rows).reshape((n_rows,1))],axis=1)],axis=0)
-    
+            print(3,time()-t0)
             search_area = np.unique(search_area, axis=0)
 
             search_area = search_area[np.all(search_area>=0,axis=1),:]
@@ -127,6 +158,7 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
 
             if np.any(search_area<0):
                 print('Attention negative index')
+            print(4,time()-t0)
 
             # Replaces by new numpy version unique
             #search_area = np.vstack({tuple(row) for row in search_area})
@@ -160,26 +192,42 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
             else: # LKF parallel to y axis
                 orth_area = ((YGi >= np.min([iseg_d[0,1],iseg_d[-1,1]])) & 
                              (YGi <= np.max([iseg_d[0,1],iseg_d[-1,1]])))
-
+            print(5,time()-t0)
             orth_area = np.concatenate([XGi[orth_area].reshape((XGi[orth_area].size,1)),
                                         YGi[orth_area].reshape((YGi[orth_area].size,1))],axis=1)
 
-    
+            print(55,time()-t0)
             # Ravel indeces to 1D index for faster comparison
-            orth_area_ravel = []
-            for io in range(orth_area.shape[0]):
-                orth_area_ravel.append(np.ravel_multi_index(orth_area[io,:].astype('int'),
-                                                            np.transpose(XGi).shape))
-            search_area_ravel = []
-            for io in range(search_area.shape[0]):
-                search_area_ravel.append(np.ravel_multi_index(search_area[io,:].astype('int'),
-                                                              np.transpose(XGi).shape))
-            search_area_ravel = list(set(search_area_ravel).intersection(orth_area_ravel))
-            search_area = np.zeros((len(search_area_ravel),2))
-            for io in range(search_area.shape[0]):
-                search_area[io,:] = np.unravel_index(search_area_ravel[io],np.transpose(XGi).shape)
+            
+            
+                
+            orth_area_shape = orth_area.shape[0]
+            search_area_shape = search_area.shape[0]
+            xgi_shape = np.transpose(XGi).shape
+
+            orth_area_ravel, search_area_ravel, search_area = calc_area_ravel(
+                orth_area_shape, search_area_shape, xgi_shape,
+                orth_area, search_area)
+
+            search_area_shape = search_area.shape[0]
+            
+            search_area = calc_area(search_area_shape, search_area_ravel, search_area, xgi_shape)
         
-    
+                                    
+            #orth_area_ravel = []
+            #for io in range(orth_area.shape[0]):
+            #    orth_area_ravel.append(np.ravel_multi_index(orth_area[io,:].astype('int'),
+            #                                                np.transpose(XGi).shape))
+            #search_area_ravel = []
+            #for io in range(search_area.shape[0]):
+            #    search_area_ravel.append(np.ravel_multi_index(search_area[io,:].astype('int'),
+            #                                                  np.transpose(XGi).shape))
+            #search_area_ravel = list(set(search_area_ravel).intersection(orth_area_ravel))
+            #search_area = np.zeros((len(search_area_ravel),2))
+            #for io in range(search_area.shape[0]):
+            #    search_area[io,:] = np.unravel_index(search_area_ravel[io],np.transpose(XGi).shape)
+        
+            print(6,time()-t0)
             # Loop over all LKFs to check whether there is overlap with search area
             for i in range(lkf1.shape[0]):
                 lkf_ravel = []
@@ -224,7 +272,7 @@ def track_lkf(lkf0_d, lkf1, nx, ny,
                             if overlap_i>=min_overlap:
                                 lkf_track_pairs.append(np.array([ilkf,i]))
 
-                        
+            print(7,time()-t0)         
     return lkf_track_pairs
 
 
