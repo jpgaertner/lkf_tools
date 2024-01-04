@@ -101,7 +101,7 @@ class process_dataset(object):
         self.index_y = np.where(np.sum(self.mask[1:-1,1:-1],axis=1)>0)
 
 
-    def detect_lkfs(self,indexes=None,force_redetect=False,keep_eps_tot=False):
+    def detect_lkfs(self,indexes=None,force_redetect=False,keep_eps_tot=False,use_eps=True):
         """
         Detects LKFs in data set given in netcdf file
         
@@ -185,7 +185,7 @@ class process_dataset(object):
                                          dog_thres=self.dog_thres,dis_thres=self.dis_thres*self.corfac,
                                          ellp_fac=self.ellp_fac,angle_thres=self.angle_thres,
                                          eps_thres=self.eps_thres,lmin=self.lmin*self.corfac,
-                                         max_ind=500*self.corfac,use_eps=True,skeleton_kernel=self.skeleton_kernel)
+                                         max_ind=500*self.corfac,use_eps=use_eps,skeleton_kernel=self.skeleton_kernel)
 
             # Save the detected features
 
