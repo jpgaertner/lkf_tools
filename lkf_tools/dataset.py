@@ -286,7 +286,7 @@ class process_dataset(object):
 
 
 
-    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True):
+    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, vmax=0.5):
 
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
@@ -339,7 +339,7 @@ class process_dataset(object):
 
         ## apply DoG filter
         lkf_detect = DoG_leads(proc_eps,max_kernel,min_kernel)
-        im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=0.4,cmap='viridis')
+        im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=vmax,cmap='viridis')
         ax[0,1].set_title('difference of gaussian filter (DoG)')
         plt.colorbar(im2, ax=ax[0,1])
 
