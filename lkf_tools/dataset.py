@@ -313,7 +313,7 @@ class process_dataset(object):
         
         return eps_tot
 
-    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, vmax=0.5):
+    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, vmax=0.5, plot=True):
 
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
@@ -348,11 +348,12 @@ class process_dataset(object):
 
         lkf_detect_multday = np.zeros(eps_tot.shape)
 
-        fig, ax = plt.subplots(2,2, figsize=(12,10))
+        if plot:
+            fig, ax = plt.subplots(2,2, figsize=(12,10))
 
-        im1 = ax[0,0].pcolormesh(eps_tot,vmin=0,vmax=0.4)
-        ax[0,0].set_title('total deformation')
-        plt.colorbar(im1, ax=ax[0,0])
+            im1 = ax[0,0].pcolormesh(eps_tot,vmin=0,vmax=0.4)
+            ax[0,0].set_title('total deformation')
+            plt.colorbar(im1, ax=ax[0,0])
 
         if use_eps:
             proc_eps = eps_tot
@@ -366,9 +367,11 @@ class process_dataset(object):
 
         ## apply DoG filter
         lkf_detect = DoG_leads(proc_eps,max_kernel,min_kernel)
-        im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=vmax,cmap='viridis')
-        ax[0,1].set_title('difference of gaussian filter (DoG)')
-        plt.colorbar(im2, ax=ax[0,1])
+        
+        if plot:
+            im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=vmax,cmap='viridis')
+            ax[0,1].set_title('difference of gaussian filter (DoG)')
+            plt.colorbar(im2, ax=ax[0,1])
 
         ### apply threshold: filter for DoG > dog_thres
         lkf_detect = (lkf_detect > dog_thres).astype('float')
@@ -377,8 +380,9 @@ class process_dataset(object):
 
         lkf_detect = (lkf_detect_multday > 0)
 
-        im3 = ax[1,0].pcolormesh(lkf_detect,cmap='Greys')
-        ax[1,0].set_title('threshold applied to DoG')
+        if plot:
+            im3 = ax[1,0].pcolormesh(lkf_detect,cmap='Greys')
+            ax[1,0].set_title('threshold applied to DoG')
 
         # Compute average total deformation
         eps_tot = np.nanmean(np.stack(eps_tot),axis=0)
@@ -391,8 +395,11 @@ class process_dataset(object):
             lkf_thin[:2,:] = 0.; lkf_thin[-2:,:] = 0.
             lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
 
-        im4 = ax[1,1].pcolormesh(lkf_thin, cmap='Greys')
-        ax[1,1].set_title('morphological thinning')
+        if plot:
+            im4 = ax[1,1].pcolormesh(lkf_thin, cmap='Greys')
+            ax[1,1].set_title('morphological thinning')
+        
+            fig.tight_layout()
         
         return lkf_thin
 
@@ -412,4 +419,4 @@ class process_dataset(object):
         you need to adjust them in the process_dataset function when initializing the lkf_data object.
         ''')
 
-        fig.tight_layout()
+        
