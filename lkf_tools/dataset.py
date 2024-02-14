@@ -18,7 +18,7 @@ import sys
 from multiprocessing import Pool
 import warnings
 from pathlib import Path
-
+import cartopy
 import xarray as xr
 
 from .detection import *
@@ -313,7 +313,22 @@ class process_dataset(object):
         
         return eps_tot
 
-    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, vmax=0.5, plot=True):
+    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
+        '''
+        parameters to adjust (ind is the timestep):
+        dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
+        min_kernel: smallest scale of features to be detected (default = 1 pixel)
+        max_kernel: largest scale of features to be detected (default = 5 pixel)
+                    (with this, the background deformation is calculated:
+                    DoG filter = blurred image using min_kernel - blurred image using max_kernel)
+        use_eps   : flag for using the total deformation (if True, default)
+                    or its natural logarithm and a histogram equalization (if False)
+                    (the latter highlights local differences across scales and thus enhances contrast in regions of low
+                    deformation)
+
+        this function just creates these plots. if you want to use other values than the default ones,
+        you need to adjust them in the process_dataset function when initializing the lkf_data object.
+        '''
 
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
@@ -348,13 +363,6 @@ class process_dataset(object):
 
         lkf_detect_multday = np.zeros(eps_tot.shape)
 
-        if plot:
-            fig, ax = plt.subplots(2,2, figsize=(12,10))
-
-            im1 = ax[0,0].pcolormesh(eps_tot,vmin=0,vmax=0.4)
-            ax[0,0].set_title('total deformation')
-            plt.colorbar(im1, ax=ax[0,0])
-
         if use_eps:
             proc_eps = eps_tot
         else:
@@ -369,9 +377,14 @@ class process_dataset(object):
         lkf_detect = DoG_leads(proc_eps,max_kernel,min_kernel)
         
         if plot:
-            im2 = ax[0,1].pcolormesh(lkf_detect,vmin=0,vmax=vmax,cmap='viridis')
-            ax[0,1].set_title('difference of gaussian filter (DoG)')
-            plt.colorbar(im2, ax=ax[0,1])
+            fig = plt.figure(figsize=(12,10))
+            axs = [fig.add_subplot(2, 2, n, projection=cartopy.crs.Orthographic(0, 90)) for n in range(1,5)]
+            
+            for ax, data, title, vmax_ in zip(
+                axs[:3], [eps_tot, lkf_detect], ['total deformation', 'difference of gaussian filter (DoG)'], vmax
+            ):
+                ax.pcolormesh(data,vmin=0, vmax=vmax_)
+                ax.set_title(title, fontsize=16)
 
         ### apply threshold: filter for DoG > dog_thres
         lkf_detect = (lkf_detect > dog_thres).astype('float')
@@ -379,10 +392,6 @@ class process_dataset(object):
         lkf_detect_multday += lkf_detect
 
         lkf_detect = (lkf_detect_multday > 0)
-
-        if plot:
-            im3 = ax[1,0].pcolormesh(lkf_detect,cmap='Greys')
-            ax[1,0].set_title('threshold applied to DoG')
 
         # Compute average total deformation
         eps_tot = np.nanmean(np.stack(eps_tot),axis=0)
@@ -396,27 +405,12 @@ class process_dataset(object):
             lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
 
         if plot:
-            im4 = ax[1,1].pcolormesh(lkf_thin, cmap='Greys')
-            ax[1,1].set_title('morphological thinning')
-        
+            for ax, data, title in zip(
+                axs[2:], [lkf_detect, lkf_thin], ['threshold applied to DoG', 'morphological thinning']
+            ):
+                ax.pcolormesh(data,vmin=0, vmax=vmax_, cmap='Greys')
+                ax.set_title(title, fontsize=16)
+
             fig.tight_layout()
         
         return lkf_thin
-
-        print('''
-        parameters to adjust (ind is the timestep):
-        dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
-        min_kernel: smallest scale of features to be detected (default = 1 pixel)
-        max_kernel: largest scale of features to be detected (default = 5 pixel)
-                    (with this, the background deformation is calculated:
-                    DoG filter = blurred image using min_kernel - blurred image using max_kernel)
-        use_eps   : flag for using the total deformation (if True, default)
-                    or its natural logarithm and a histogram equalization (if False)
-                    (the latter highlights local differences across scales and thus enhances contrast in regions of low
-                    deformation)
-
-        this function just creates these plots. if you want to use other values than the default ones,
-        you need to adjust them in the process_dataset function when initializing the lkf_data object.
-        ''')
-
-        
