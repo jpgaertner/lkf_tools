@@ -284,7 +284,7 @@ class process_dataset(object):
                                                                  self.lkf_filelist[ilkf+1][4:-4])),
                     tracked_pairs)
 
-    def calc_eps_tot(self, ind):
+    def calc_eps(self, ind):
         
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
@@ -311,7 +311,7 @@ class process_dataset(object):
         eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
         eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
         
-        return eps_tot
+        return div, eps_tot
 
     def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
         '''
