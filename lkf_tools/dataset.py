@@ -11,6 +11,8 @@ __author__ = "Nils Hutter"
 __author_email__ = "nils.hutter@awi.de"
 
 
+from jax import jit
+import jax.numpy as jnp
 import numpy as np
 import matplotlib.pylab as plt
 import os
@@ -25,7 +27,21 @@ from .detection import *
 from .tracking import *
 from .rgps import *
 
+@jit
+def calc_eps_body(uice, vice, aice, dxu, dyu, mask, a, b, c, d):
 
+    dudx = ((uice[2:,:]-uice[:-2,:])/(dxu[:-2,:]+dxu[1:-1,:]))[:,1:-1]
+    dvdx = ((vice[2:,:]-vice[:-2,:])/(dxu[:-2,:]+dxu[1:-1,:]))[:,1:-1]
+    dudy = ((uice[:,2:]-uice[:,:-2])/(dyu[:,:-2]+dyu[:,1:-1]))[1:-1,:]
+    dvdy = ((vice[:,2:]-vice[:,:-2])/(dyu[:,:-2]+dyu[:,1:-1]))[1:-1,:]
+
+    div = (dudx + dvdy) * 3600. *24. # in day^-1
+    shr = jnp.sqrt((dudx-dvdy)**2 + (dudy + dvdx)**2) * 3600. *24. # in day^-1
+    vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
+
+    eps_tot = jnp.sqrt(div**2+shr**2)
+
+    return eps_tot, div, shr, vor
 
 class process_dataset(object):
     """
@@ -284,36 +300,46 @@ class process_dataset(object):
                                                                  self.lkf_filelist[ilkf+1][4:-4])),
                     tracked_pairs)
 
+
     def calc_eps(self, ind):
-        
+    
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
         aice = np.array(self.data.A[ind,:,:])
 
-        dudx = ((uice[2:,:]-uice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
-        dvdx = ((vice[2:,:]-vice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
-        dudy = ((uice[:,2:]-uice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
-        dvdy = ((vice[:,2:]-vice[:,:-2])/(self.dyu[:,:-2]+self.dyu[:,1:-1]))[1:-1,:]
+        dxu = np.array(self.dxu)
+        dyu = np.array(self.dyu)
+        mask = np.array(self.mask)
+        # arctic basin
+        a = max([0,self.index_y[0][0]-1])
+        b = self.index_y[0][-1]+2
+        c = max([0,self.index_x[0][0]-1])
+        d = self.index_x[0][-1]+2
 
-        div = (dudx + dvdy) * 3600. *24. # in day^-1
-        shr = np.sqrt((dudx-dvdy)**2 + (dudy + dvdx)**2) * 3600. *24. # in day^-1
-        vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
+        eps_tot, div, shr, vor = calc_eps_body(uice, vice, aice, dxu, dyu, mask, a, b, c, d)
 
-        eps_tot = np.sqrt(div**2+shr**2)
-        eps_tot = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
+        def basin_mask(data):
+            data = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), data, np.nan)
 
-        # Mask Arctic basin and shrink array
-        eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
-        eps_tot = eps_tot[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2,
-                          max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2]
-        eps_tot[0,:] = np.nan; eps_tot[-1,:] = np.nan
-        eps_tot[:,0] = np.nan; eps_tot[:,-1] = np.nan
-        eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
-        eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
-        
-        return div, eps_tot
+            # Mask Arctic basin and shrink array
+            data = np.where(mask[1:-1,1:-1], data, np.nan)
+            data = data[a:b,c:d]
+            data[0,:] = np.nan; data[-1,:] = np.nan
+            data[:,0] = np.nan; data[:,-1] = np.nan
+            data[1,:] = np.nan; data[-2,:] = np.nan
+            data[:,1] = np.nan; data[:,-2] = np.nan
 
-    def finetuning(self, ind, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
+            return data
+
+        eps_tot = basin_mask(eps_tot)
+        div = basin_mask(div)
+        shr = basin_mask(shr)
+        vor = basin_mask(vor)
+
+        return eps_tot, div, shr, vor
+    
+
+    def finetuning(self, i, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
         '''
         parameters to adjust (ind is the timestep):
         dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
@@ -330,9 +356,9 @@ class process_dataset(object):
         you need to adjust them in the process_dataset function when initializing the lkf_data object.
         '''
 
-        uice = np.array(self.data.U[ind,:,:])
-        vice = np.array(self.data.V[ind,:,:])
-        aice = np.array(self.data.A[ind,:,:])
+        uice = np.array(self.data.U[i,:,:])
+        vice = np.array(self.data.V[i,:,:])
+        aice = np.array(self.data.A[i,:,:])
 
         dudx = ((uice[2:,:]-uice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
         dvdx = ((vice[2:,:]-vice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
