@@ -259,7 +259,7 @@ class process_dataset(object):
         self.adv_time = float(self.time.diff(dim='time')[0]/1e9)*self.t_red
         
         # Do the tracking
-        for ilkf in [int(j) for j in self.indexes if j+1 not in self.tracked_lkfs]:
+        for ilkf in [int(j) for j in self.indexes[:-1] if j+1 not in self.tracked_lkfs]:
             print("Track features in %s to %s" %(self.lkf_filelist[ilkf],
                                                  self.lkf_filelist[ilkf+1]))
             
