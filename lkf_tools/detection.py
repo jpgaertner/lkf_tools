@@ -27,8 +27,8 @@ import warnings
 import scipy.ndimage as ndim
 import skimage.morphology
 
-from .rgps import *
-from ._dir_filter import skeleton_along_max
+from rgps import *
+from _dir_filter import skeleton_along_max
 
 
 
