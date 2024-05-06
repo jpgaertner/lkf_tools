@@ -16,7 +16,7 @@ __author_email__ = "nils.hutter@awi.de"
 import numpy as np
 import matplotlib.pylab as plt
 
-from .detection import *
+from detection import *
 
 
 
@@ -138,7 +138,9 @@ def track_lkf(lkf0_d, lkf1, nx, ny, thres_frac=0.75, min_overlap=4,first_overlap
             A = np.transpose(np.array([iseg_d[:,0], np.ones(iseg_d[:,0].shape)]))
             b = np.reshape(iseg_d[:,1],(iseg_d[:,1].size,1))
 
-            if np.linalg.matrix_rank(A)>=2:
+            #if np.linalg.matrix_rank(np.array(A)) >=2:
+            if int(np.sum(np.abs(np.diff(A, axis=0))))>0:
+                
                 coeff = np.squeeze(np.linalg.solve(np.dot(A.T,A),np.dot(A.T,b)))
 
                 if coeff[0]!=0:
