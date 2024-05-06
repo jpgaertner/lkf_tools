@@ -23,9 +23,9 @@ from pathlib import Path
 import cartopy
 import xarray as xr
 
-from .detection import *
-from .tracking import *
-from .rgps import *
+from detection import *
+from tracking import *
+from rgps import *
 
 @jit
 def calc_eps_body(uice, vice, aice, dxu, dyu, mask, a, b, c, d):
@@ -263,37 +263,41 @@ class process_dataset(object):
             print("Track features in %s to %s" %(self.lkf_filelist[ilkf],
                                                  self.lkf_filelist[ilkf+1]))
             
-            # Open lkf0 and compute drift estimate
-            lkf0_d = drift_estimate(self.lkfpath.joinpath(self.lkf_filelist[ilkf]),self.data,
-                                    self.mask,self.index_x,self.index_y,self.red_fac,
-                                    self.dxu,self.dyu,adv_time=self.adv_time,t=self.dt,dt=self.dt)
+            try:
+                # Open lkf0 and compute drift estimate
+                lkf0_d = drift_estimate(self.lkfpath.joinpath(self.lkf_filelist[ilkf]),self.data,
+                                        self.mask,self.index_x,self.index_y,self.red_fac,
+                                        self.dxu,self.dyu,adv_time=self.adv_time,t=self.dt,dt=self.dt)
 
-            # Filter zero length LKFs due to NaN drift
-            ind_f   = np.where(np.array([iseg.size for iseg in lkf0_d])>0)[0]
-            lkf0_df = [iseg for iseg in lkf0_d if iseg.size>0]
+                # Filter zero length LKFs due to NaN drift
+                ind_f   = np.where(np.array([iseg.size for iseg in lkf0_d])>0)[0]
+                lkf0_df = [iseg for iseg in lkf0_d if iseg.size>0]
 
-            # Read LKFs
-            lkf1 = np.load(self.lkfpath.joinpath(self.lkf_filelist[ilkf+1]),allow_pickle=True)
-            # lkf1_l = []
-            # for ilkf,iseg in enumerate(lkf1):
-            #     lkf1_l.append(iseg[:,:2])
-            lkf1_l = lkf1
-            if len(lkf1_l)==1:
-                #lkf1_l = np.array([lkf1.squeeze()],dtype='object')
-                lkf1_l = [lkf1.squeeze()]
-            for ilkf1,iseg in enumerate(lkf1):
-                lkf1_l[ilkf1] = iseg[:,:2]
+                # Read LKFs
+                lkf1 = np.load(self.lkfpath.joinpath(self.lkf_filelist[ilkf+1]),allow_pickle=True)
+                # lkf1_l = []
+                # for ilkf,iseg in enumerate(lkf1):
+                #     lkf1_l.append(iseg[:,:2])
+                lkf1_l = lkf1
+                if len(lkf1_l)==1:
+                    #lkf1_l = np.array([lkf1.squeeze()],dtype='object')
+                    lkf1_l = [lkf1.squeeze()]
+                for ilkf1,iseg in enumerate(lkf1):
+                    lkf1_l[ilkf1] = iseg[:,:2]
 
-            # Compute tracking
-            tracked_pairs = track_lkf(lkf0_df, lkf1_l, self.nx, self.ny, 
-                                      thres_frac=0.75, min_overlap=4,
-                                      overlap_thres=1.5,angle_thres=25)
+                # Compute tracking
+                tracked_pairs = track_lkf(lkf0_df, lkf1_l, self.nx, self.ny, 
+                                          thres_frac=0.75, min_overlap=4,
+                                          overlap_thres=1.5,angle_thres=25)
 
-            if len(tracked_pairs)==0:
-                tracked_pairs = np.array([[],[]])
-            else:
-                tracked_pairs = np.stack(tracked_pairs)
-                tracked_pairs[:,0] = ind_f[np.stack(tracked_pairs)[:,0]]
+                if len(tracked_pairs)==0:
+                    tracked_pairs = np.array([[],[]])
+                else:
+                    tracked_pairs = np.stack(tracked_pairs)
+                    tracked_pairs[:,0] = ind_f[np.stack(tracked_pairs)[:,0]]
+                
+            except:
+                tracked_pairs = []
 
             # Save tracked pairs
             np.save(self.track_output_path.joinpath('lkf_tracked_pairs_%s_to_%s' %(self.lkf_filelist[ilkf][4:-4],
