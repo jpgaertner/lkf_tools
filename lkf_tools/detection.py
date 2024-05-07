@@ -1129,7 +1129,7 @@ def lkf_detect_eps(eps_tot,max_kernel=5,min_kernel=1,dog_thres=0,dis_thres=4,ell
 def lkf_detect_eps_multday(eps_tot,max_kernel=5,min_kernel=1,
                            dog_thres=0,dis_thres=4,ellp_fac=3,
                            angle_thres=35,eps_thres=0.5,lmin=4,
-                           max_ind=500, use_eps=False,skeleton_kernel=0):
+                           max_ind=500, use_eps=True,skeleton_kernel=0):
     """Function that detects LKFs in temporal slice of deformation rate.
     LKF binary map is generated for each time slice and all binary maps
     are combined into one before segments are detected.
@@ -1144,6 +1144,8 @@ def lkf_detect_eps_multday(eps_tot,max_kernel=5,min_kernel=1,
            dis_thres     - distance threshold for reconnection
            eps_thres     - threshold difference in deformation rate
            lmin          - minimum length of segments [in pixel]
+           use_eps       - True: use total deformation rate
+                           False: apply log and histogram equalization first 
 
     Output: seg - list of detected LKFs"""
 
