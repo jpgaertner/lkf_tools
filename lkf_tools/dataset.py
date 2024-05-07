@@ -343,7 +343,7 @@ class process_dataset(object):
         return eps_tot, div, shr, vor
     
 
-    def finetuning(self, i, dog_thres=0.01, aice_thresh=0.8, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
+    def finetuning(self, i, dog_thres=0.01, aice_thresh=0.7, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
         '''
         parameters to adjust (ind is the timestep):
         dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
