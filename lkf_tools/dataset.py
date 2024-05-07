@@ -343,7 +343,7 @@ class process_dataset(object):
         return eps_tot, div, shr, vor
     
 
-    def finetuning(self, i, dog_thres=0.01, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
+    def finetuning(self, i, dog_thres=0.01, aice_thresh=0.8, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
         '''
         parameters to adjust (ind is the timestep):
         dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
@@ -385,7 +385,10 @@ class process_dataset(object):
         eps_tot[1,:] = np.nan; eps_tot[-2,:] = np.nan
         eps_tot[:,1] = np.nan; eps_tot[:,-2] = np.nan
 
-
+        aice = aice[1:-1,1:-1]
+        aice = aice[max([0,self.index_y[0][0]-1]):self.index_y[0][-1]+2,
+                    max([0,self.index_x[0][0]-1]):self.index_x[0][-1]+2]
+        
         max_kernel = max_kernel*(1+self.corfac)*0.5
         min_kernel = min_kernel*(1+self.corfac)*0.5
 
@@ -434,13 +437,16 @@ class process_dataset(object):
             lkf_thin[:2,:] = 0.; lkf_thin[-2:,:] = 0.
             lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
 
+        lkf_thin = np.where(aice<aice_thresh,0,lkf_thin)    
+        
         if plot:
             for ax, data, title in zip(
                 axs[2:], [lkf_detect, lkf_thin], ['threshold applied to DoG', 'morphological thinning']
             ):
-                ax.pcolormesh(data,vmin=0, vmax=vmax_, cmap='Greys')
+                ax.pcolormesh(data,vmin=0, vmax=1, cmap='Greys')
                 ax.set_title(title, fontsize=16)
-
+                
             fig.tight_layout()
+            plt.show()
         
         return lkf_thin
