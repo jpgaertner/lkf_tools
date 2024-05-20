@@ -48,9 +48,10 @@ class process_dataset(object):
     Class to process deformation and drift dataset to LKF data set.
     """
     def __init__(self,netcdf_file,output_path='./',xarray=None,
-                 max_kernel=5,min_kernel=1, dog_thres=0.01,skeleton_kernel=0,
-                 dis_thres=4,ellp_fac=2,angle_thres=45,eps_thres=1.25,lmin=3,
-                 latlon=True,return_eps=True,red_fac=1,t_red=3):
+                 max_kernel=5,min_kernel=1, dog_thres=0.01,aice_thresh=0.0,
+                 skeleton_kernel=0,dis_thres=4,ellp_fac=2,angle_thres=45,
+                 eps_thres=1.25,lmin=3,latlon=True,return_eps=True,
+                 red_fac=1,t_red=3):
         """
         Processes deformation and drift dataset to LKF data set
 
@@ -69,6 +70,7 @@ class process_dataset(object):
         self.max_kernel = max_kernel
         self.min_kernel = min_kernel
         self.dog_thres = dog_thres
+        self.aice_thresh = aice_thresh
         self.skeleton_kernel = skeleton_kernel
         self.dis_thres = dis_thres
         self.ellp_fac = ellp_fac
@@ -171,8 +173,15 @@ class process_dataset(object):
                     vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
 
                 eps_tot = np.sqrt(div**2+shr**2)
+                
+                # this averages the ice concentration over 2 grid cells in every direction
+                aice_mean = aice.copy()
+                aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
+                                        for j in range(2,np.shape(aice)[1]-2)]
+                                       for i in range(2,np.shape(aice)[0]-2)
+                                      ]
 
-                eps_tot = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
+                eps_tot = np.where((aice_mean[1:-1,1:-1]>self.aice_thresh) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
 
                 # Mask Arctic basin and shrink array
                 eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
@@ -201,7 +210,9 @@ class process_dataset(object):
                                          dog_thres=self.dog_thres,dis_thres=self.dis_thres*self.corfac,
                                          ellp_fac=self.ellp_fac,angle_thres=self.angle_thres,
                                          eps_thres=self.eps_thres,lmin=self.lmin*self.corfac,
-                                         max_ind=500*self.corfac,use_eps=use_eps,skeleton_kernel=self.skeleton_kernel)
+                                         max_ind=500*self.corfac,use_eps=use_eps,
+                                         skeleton_kernel=self.skeleton_kernel
+                                        )
 
             # Save the detected features
 
