@@ -60,19 +60,24 @@ def hist_eq(array, number_bins=256):
     Input:  array and number_bins (range of possible output valus: 0 to number_bins as integers)
     Output: histogram equalized version of array
     """
-    # Compute histogram
-    bins_center = np.linspace(np.nanmin(array[~np.isnan(array)]),np.nanmax(array[~np.isnan(array)]),number_bins)
-    bins = np.append(bins_center-np.diff(bins_center)[0],(bins_center+np.diff(bins_center)[0])[-1])
-    hist,bins = np.histogram(array[~np.isnan(array)].flatten(), bins)
+    # a historgram equalization can only be applied if there are at least two non nan values
+    if np.nansum(~np.isnan(array))>1:
+        # Compute histogram
+        bins_center = np.linspace(np.nanmin(array[~np.isnan(array)]),np.nanmax(array[~np.isnan(array)]),number_bins)
+        bins = np.append(bins_center-np.diff(bins_center)[0],(bins_center+np.diff(bins_center)[0])[-1])
+        hist,bins = np.histogram(array[~np.isnan(array)].flatten(), bins)
 
-    # Distribute bins equally to create lookup table
-    new_values = np.floor((number_bins-1)*np.cumsum(hist/float(array[~np.isnan(array)].size)))
+        # Distribute bins equally to create lookup table
+        new_values = np.floor((number_bins-1)*np.cumsum(hist/float(array[~np.isnan(array)].size)))
 
-    # Compute equalized array with lookuptable
-    array_equalized = np.take(new_values,np.digitize(array[~np.isnan(array)].flatten(),bins)-1)
+        # Compute equalized array with lookuptable
+        array_equalized = np.take(new_values,np.digitize(array[~np.isnan(array)].flatten(),bins)-1)
 
-    new_array_equalized = array.flatten()
-    new_array_equalized[~np.isnan(new_array_equalized)]=array_equalized
+        new_array_equalized = array.flatten()
+        new_array_equalized[~np.isnan(new_array_equalized)]=array_equalized
+        
+    else:
+        new_array_equalized = array
 	
     return new_array_equalized.reshape(array.shape)
 
