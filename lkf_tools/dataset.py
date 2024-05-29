@@ -354,7 +354,7 @@ class process_dataset(object):
         return eps_tot, div, shr, vor
     
 
-    def finetuning(self, i, dog_thres=0.01, aice_thresh=0.7, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
+    def finetuning(self, i, dog_thres=0.01, aice_thresh=0, min_kernel=1, max_kernel=5, use_eps=True, plot=True, vmax=[0.4,0.5]):
         '''
         parameters to adjust (ind is the timestep):
         dog_thres : threshold in the DoG filtered image for a feature to be marked as LKF (default = 0.01 units of deformation)
@@ -448,7 +448,14 @@ class process_dataset(object):
             lkf_thin[:2,:] = 0.; lkf_thin[-2:,:] = 0.
             lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
 
-        lkf_thin = np.where(aice<aice_thresh,0,lkf_thin)    
+        # this averages the ice concentration over 2 grid cells in every direction
+        aice_mean = aice.copy()
+        aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
+                                for j in range(2,np.shape(aice)[1]-2)]
+                               for i in range(2,np.shape(aice)[0]-2)
+                              ]
+        
+        lkf_thin = np.where(aice_mean>aice_thresh,lkf_thin,0)    
         
         if plot:
             for ax, data, title in zip(
