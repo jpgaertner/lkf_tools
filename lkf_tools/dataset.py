@@ -175,13 +175,16 @@ class process_dataset(object):
                 eps_tot = np.sqrt(div**2+shr**2)
                 
                 # this averages the ice concentration over 2 grid cells in every direction
-                aice_mean = aice.copy()
-                aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
-                                        for j in range(2,np.shape(aice)[1]-2)]
-                                       for i in range(2,np.shape(aice)[0]-2)
-                                      ]
+                # (originally implemented for np.where(aice_mean>aice_thresh, ...)
+                # it is not used because it does not change the result and
+                # slows down the calculation way too much)
+                #aice_mean = aice.copy()
+                #aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
+                #                        for j in range(2,np.shape(aice)[1]-2)]
+                #                       for i in range(2,np.shape(aice)[0]-2)
+                #                      ]
 
-                eps_tot = np.where((aice_mean[1:-1,1:-1]>self.aice_thresh) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
+                eps_tot = np.where((aice[1:-1,1:-1]>self.aice_thresh) & (aice[1:-1,1:-1]<=1), eps_tot, np.nan)
 
                 # Mask Arctic basin and shrink array
                 eps_tot = np.where(self.mask[1:-1,1:-1], eps_tot, np.nan)
@@ -449,13 +452,16 @@ class process_dataset(object):
             lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
 
         # this averages the ice concentration over 2 grid cells in every direction
-        aice_mean = aice.copy()
-        aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
-                                for j in range(2,np.shape(aice)[1]-2)]
-                               for i in range(2,np.shape(aice)[0]-2)
-                              ]
+        # (originally implemented for np.where(aice_mean>aice_thresh, ...)
+        # it is not used because it does not change the result and
+        # slows down the calculation way too much)
+        #aice_mean = aice.copy()
+        #aice_mean[2:-2,2:-2] = [[np.nanmean(aice[i-2:i+3,j-2:j+3])
+        #                        for j in range(2,np.shape(aice)[1]-2)]
+        #                       for i in range(2,np.shape(aice)[0]-2)
+        #                      ]
         
-        lkf_thin = np.where(aice_mean>aice_thresh,lkf_thin,0)    
+        lkf_thin = np.where(aice>aice_thresh,lkf_thin,0)    
         
         if plot:
             for ax, data, title in zip(
