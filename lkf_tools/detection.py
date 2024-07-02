@@ -573,7 +573,8 @@ def elliptical_distance(seg_I, seg_II, ellp_fac=1, dis_thres=np.inf):
     return dis
 
 
-def angle_segs(seg_I,seg_II):
+@jit
+def angle_segs(seg_I, seg_II):
     """ Function to compute the angle between two segments.
     
     Input: seg_I - array with start and end coordinates of seg I
@@ -583,15 +584,15 @@ def angle_segs(seg_I,seg_II):
     Output: angle - angle between segments"""
 
     # Determine directions of segments
-    e1 = (seg_I[:,0]-seg_I[:,1])
-    e1 = (e1/np.sqrt(np.sum(e1**2))) # Normalize basis vector
+    e1 = seg_I[:,0] - seg_I[:,1]
+    e1 = e1 / jnp.sqrt(jnp.sum(e1**2)) # Normalize basis vector
 
-    f1 = (seg_II[:,0]-seg_II[:,1])
-    f1 = (f1/np.sqrt(np.sum(f1**2))) # Normalize basis vector
+    f1 = seg_II[:,0] - seg_II[:,1]
+    f1 = f1 / jnp.sqrt(jnp.sum(f1**2)) # Normalize basis vector
 
     # Determine angle between both directions
-    angle = np.dot(e1,-f1)
-    angle = np.arccos(angle)/np.pi*180
+    angle = jnp.dot(e1, -f1)
+    angle = jnp.arccos(angle) / jnp.pi*180
 
     return angle
 
