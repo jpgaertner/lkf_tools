@@ -521,9 +521,8 @@ def detect_segments(lkf_thin,eps_thres=0.1,max_ind=500):
 # ---------------- ( described in Section 3.1.3 ) -------------
 
 
-
-
-def elliptical_distance(seg_I,seg_II,ellp_fac=1,dis_thres=np.inf):
+@jit
+def elliptical_distance(seg_I, seg_II, ellp_fac=1, dis_thres=np.inf):
     """ Function to compute the elliptical distance between two
     segments, where the distance within the segment direction is
     weighted by 1 and the direction perpendicular to the direction
@@ -540,35 +539,36 @@ def elliptical_distance(seg_I,seg_II,ellp_fac=1,dis_thres=np.inf):
     Output: dis - elliptical distance"""
 
     # Determine basis vectors along seg_I direction
-    e1 = (seg_I[:,0]-seg_I[:,1])
-    e1 = (e1/np.sqrt(np.sum(e1**2))).reshape((2,1)) # Normalize basis vector
+    e1 = seg_I[:,0] - seg_I[:,1]
+    e1 = (e1 / jnp.sqrt(jnp.sum(e1**2))).reshape((2,1)) # Normalize basis vector
 
-    e2 = np.dot(np.array([[0,-1],[1,0]]),e1)
+    e2 = jnp.dot(jnp.array([[0,-1], [1,0]]), e1)
 
     # Project connection vetor on basis vectors
-    coeff = np.linalg.solve(np.hstack([e1,e2]),(seg_II[:,0] - seg_I[:,0]))
+    coeff = jnp.linalg.solve(jnp.hstack([e1, e2]),(seg_II[:,0] - seg_I[:,0]))
 
-    if coeff[0]<0: coeff[0] = np.inf
+    coeff = coeff.at[0].set(jnp.where(coeff[0] < 0, jnp.inf, coeff[0]))
 
     # Compute weighted distance
-    d1 = np.sqrt(np.sum(coeff**2 * np.array([1,ellp_fac])))
+    d1 = jnp.sqrt(jnp.sum(coeff**2 * jnp.array([1, ellp_fac])))
 
-    if d1 <= dis_thres:
+
+    def compute_d2():
         # Determine basis vectors along seg_II direction
-        e1 = (seg_II[:,0]-seg_II[:,1])
-        e1 = (e1/np.sqrt(np.sum(e1**2))).reshape((2,1)) # Normalize basis vector
+        e1_II = seg_II[:,0] - seg_II[:,1]
+        e1_II = (e1_II / jnp.sqrt(jnp.sum(e1_II**2))).reshape((2,1)) # Normalize basis vector
 
-        e2 = np.dot(np.array([[0,-1],[1,0]]),e1)
+        e2_II = jnp.dot(jnp.array([[0,-1], [1,0]]), e1_II)
 
         # Project connection vetor on basis vectors
-        coeff = np.linalg.solve(np.hstack([e1,e2]),(seg_I[:,0] - seg_II[:,0]))
+        coeff_II = jnp.linalg.solve(jnp.hstack([e1_II,e2_II]),(seg_I[:,0] - seg_II[:,0]))
 
         # Compute weighted distance
-        d2 = np.sqrt(np.sum(coeff**2 * np.array([1,ellp_fac])))
+        d2 = jnp.sqrt(jnp.sum(coeff_II**2 * jnp.array([1, ellp_fac])))
 
-        dis = 0.5*(d1+d2)
-    else:
-        dis = np.NaN
+        return 0.5 * (d1 + d2)
+
+    dis = jnp.where(d1 <= dis_thres, compute_d2(), jnp.nan)
 
     return dis
 
