@@ -845,8 +845,8 @@ def update_segs(ind_connect, ori_connect, seg, segs, eps_segs, num_points_segs):
 
     return seg, segs, eps_segs, num_points_segs
 
-
-def update_prob_matrix(prob_ma,ind_connect,segs_up,eps_segs_up,dis_thres,angle_thres,eps_thres,ellp_fac=1):
+def update_prob_matrix(prob_ma, ind_connect, segs_up, eps_segs_up,
+                       dis_thres, angle_thres, eps_thres, ellp_fac=1):
     """ Function to update the probability matrix given the 
     probability of all possible combinations of segments to belong
     to the same deformation feature. Only the rows and columns
@@ -880,8 +880,8 @@ def update_prob_matrix(prob_ma,ind_connect,segs_up,eps_segs_up,dis_thres,angle_t
 
     return prob_ma
 
-
-def seg_reconnection(seg,segs,eps_segs,num_points_segs,dis_thres,angle_thres,eps_thres,ellp_fac=1):
+def seg_reconnection(seg,segs, eps_segs, num_points_segs,
+                     dis_thres, angle_thres, eps_thres, ellp_fac=1):
     """ Function that does the reconnection
     
     Input: seg - list of segments
@@ -900,36 +900,31 @@ def seg_reconnection(seg,segs,eps_segs,num_points_segs,dis_thres,angle_thres,eps
     
 
     # 1. Initialize probability matrix
-    prob_ma = init_prob_matrix(segs,eps_segs,dis_thres,angle_thres,eps_thres,ellp_fac=ellp_fac)
+    prob_ma = init_prob_matrix(segs, eps_segs, dis_thres, angle_thres, eps_thres, ellp_fac)
     
     # 2. Loop over matrix and reconnect within one iteration the pair
     #    of segments that minimizes the probability matrix
     
-    #    - Loop parameters
-    ind = 0 
-    num_pos_reconnect = np.sum(prob_ma[:,:,0]<1)
+    # Loop parameters
+    num_pos_reconnect = np.sum(prob_ma[:, :, 0] < 1)
     max_ind = 500
 
-    # loop (break criteria: no connection possible or max iterations are reached)
-    while num_pos_reconnect >= 1:
-        
+    for i in range(max_ind):
+        if num_pos_reconnect < 1:
+            break
+
         # 2.a. Find minimum of probability matrix
-        ind_connect = np.unravel_index(np.nanargmin(prob_ma[:,:,0]),
-                                       prob_ma[:,:,0].shape)
+        ind_connect = np.unravel_index(np.nanargmin(prob_ma[:, :, 0]),prob_ma[:, :, 0].shape)
         ori_connect = prob_ma[ind_connect][1:]
 
         # 2.b. Update segments
-        seg, segs, eps_segs, num_points_segs = update_segs(ind_connect,ori_connect,seg,segs,eps_segs,num_points_segs)
+        seg, segs, eps_segs, num_points_segs = update_segs(ind_connect, ori_connect, seg, segs, eps_segs, num_points_segs)
         
         # 2.c. Update probability matrix
-        prob_ma = update_prob_matrix(prob_ma,ind_connect,segs,eps_segs,dis_thres,angle_thres,eps_thres,ellp_fac=ellp_fac)
+        prob_ma = update_prob_matrix(prob_ma, ind_connect, segs, eps_segs, dis_thres, angle_thres, eps_thres, ellp_fac)
 
         # 2.d. Update loop parameters
-        ind += 1
-        num_pos_reconnect = np.sum(prob_ma[:,:,0]<1)
-
-        if ind>= max_ind:
-            break
+        num_pos_reconnect = np.sum(prob_ma[:, :, 0] < 1)
 
     return seg
 
