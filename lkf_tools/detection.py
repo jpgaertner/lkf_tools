@@ -596,8 +596,8 @@ def angle_segs(seg_I, seg_II):
 
     return angle
 
-
-def find_pos_connect(seg_I,segs,dis_thres):
+@jit
+def find_pos_connect(seg_I, segs, dis_thres):
     """ Function to determine the possible connection segments
     and to compute both corresponding starting point. The latter
     information is given as arrays of the orientation where 1 means
@@ -618,10 +618,10 @@ def find_pos_connect(seg_I,segs,dis_thres):
                    criteria"""
 
     # Compute displacement from starting and end points in segs from start in seg_I
-    disp_start = np.rollaxis(np.rollaxis(segs,-1,start=1)-seg_I[:,0],-1,start=1)
+    disp_start = jnp.moveaxis(jnp.moveaxis(segs, -1, 1) - seg_I[:, 0], -1, 1)
 
     # Compute displacement from starting and end points in segs from end in seg_I
-    disp_end   = np.rollaxis(np.rollaxis(segs,-1,start=1)-seg_I[:,1],-1,start=1)
+    disp_end = jnp.moveaxis(jnp.moveaxis(segs, -1, 1) - seg_I[:, 1], -1, 1)
 
     # # Filter for larger displacements than dis_thres
     # mask = np.all([np.all(np.any(np.abs(disp_start)>dis_thres,axis=1),axis=1),
@@ -630,16 +630,17 @@ def find_pos_connect(seg_I,segs,dis_thres):
     # disp_end[mask,:,:]   = np.NaN
 
     # Compute distance only for filtered displacements
-    dis = np.hstack([np.sqrt(np.sum(disp_start**2,axis=1)).reshape((segs.shape[0],1,2)),
-                     np.sqrt(np.sum(disp_end**2,  axis=1)).reshape((segs.shape[0],1,2))])
+    dis_start = jnp.sqrt(jnp.sum(disp_start**2, axis=1))
+    dis_end = jnp.sqrt(np.sum(disp_end**2, axis=1))
+    dis = jnp.concatenate([dis_start[..., jnp.newaxis], dis_end[..., jnp.newaxis]], axis=2)
 
     # Give out combination of orientation of segments with starting point being first column
-    ori_segI = np.argmin(dis,axis=1)
-    ori_segs = np.argmin(np.min(dis,axis=1),axis=1)
-    ori_segI = ori_segI[np.arange(ori_segs.size),ori_segs]
+    ori_segI = jnp.argmin(dis, axis=1)
+    ori_segs = jnp.argmin(jnp.min(dis, axis=1), axis=1)
+    ori_segI = ori_segI[jnp.arange(ori_segs.size), ori_segs]
 
     # Filter for larger displacements than dis_thres
-    mask = np.all(np.abs(dis)>dis_thres,axis=(1,2))
+    mask = jnp.all(dis > dis_thres, axis=(1,2))
 
     return ori_segI, ori_segs, ~mask
 
