@@ -1153,66 +1153,58 @@ def lkf_detect_eps_multday(eps_tot,max_kernel=5,min_kernel=1,
                            False: apply log and histogram equalization first 
 
     Output: seg - list of detected LKFs"""
-
-    lkf_detect_multday = np.zeros(eps_tot[0].shape)
-
-    for i in range(len(eps_tot)): 
-        if use_eps:
-            proc_eps = eps_tot[i]
-        else:
-            ## Take natural logarithm
-            proc_eps = np.log(eps_tot[i])
-        proc_eps[~np.isfinite(proc_eps)] = np.NaN
-        if not use_eps:
-            ## Apply histogram equalization
-            proc_eps = hist_eq(proc_eps)
-        ## Apply DoG filter
-        lkf_detect = DoG_leads(proc_eps,max_kernel,min_kernel)
-        ### Filter for DoG>0
-        lkf_detect = (lkf_detect > dog_thres).astype('float')
-        lkf_detect[~np.isfinite(proc_eps)] = np.NaN
-        lkf_detect_multday += lkf_detect
-
-    lkf_detect = (lkf_detect_multday > 0)
     
-    # Compute average total deformation
-    eps_tot = np.nanmean(np.stack(eps_tot),axis=0)
+    # Preprocessing function
+    def process_eps(eps_slice):
+        if use_eps:
+            proc_eps = eps_slice
+        else:
+            proc_eps = np.log(eps_slice)
+            proc_eps[~np.isfinite(proc_eps)] = np.NaN
+            proc_eps = hist_eq(proc_eps)
+        return proc_eps
 
-    ## Apply morphological thinning
+    # Do the preprocessing and apply DoG filter
+    preprocessed_slices = [process_eps(eps) for eps in eps_tot]
+    dog_filtered_slices = [DoG_leads(eps, max_kernel, min_kernel) > dog_thres
+                           for eps in preprocessed_slices]
+    dog_filtered_slices = np.where(np.isfinite(preprocessed_slices), dog_filtered_slices, np.nan)
+
+    # Combine binary maps
+    lkf_detect_multday = np.sum(dog_filtered_slices, axis=0)
+    lkf_detect = lkf_detect_multday > 0
+
+    # Compute average total deformation
+    avg_eps_tot = np.nanmean(np.stack(eps_tot), axis=0)
+
+    # Apply morphological thinning
     if skeleton_kernel==0:
-        lkf_thin =  skimage.morphology.skeletonize(lkf_detect).astype('float')
+        lkf_thin = skimage.morphology.skeletonize(lkf_detect).astype('float')
     else:
-        lkf_thin = skeleton_along_max(eps_tot,lkf_detect,kernelsize=skeleton_kernel).astype('float')
-        lkf_thin[:2,:] = 0.; lkf_thin[-2:,:] = 0.
-        lkf_thin[:,:2] = 0.; lkf_thin[:,-2:] = 0.
+        lkf_thin = skeleton_along_max(avg_eps_tot, lkf_detect, kernelsize=skeleton_kernel).astype('float')
+        lkf_thin[:2, :] = 0.; lkf_thin[-2:, :] = 0.
+        lkf_thin[:, :2] = 0.; lkf_thin[:, -2:] = 0.
         
     # Segment detection
-    seg_f = detect_segments(lkf_thin,max_ind=max_ind) # Returns matrix fill up with NaNs
-    ## Convert matrix to list with arrays containing indexes of points
-    seg = [seg_f[i][:,~np.any(np.isnan(seg_f[i]),axis=0)].astype('int')
+    seg_f = detect_segments(lkf_thin, max_ind=max_ind)
+    # Convert matrix to list with arrays containing indexes of points
+    seg = [seg_f[i][:, ~np.any(np.isnan(seg_f[i]), axis=0)].astype('int')
            for i in range(seg_f.shape[0])]
-    # ## Apply inter junction connection
+    # Apply inter junction connection
     # seg = connect_inter_junctions(seg,lkf_thin)
-    ## Filter segments that are only points
+    # Filter segments that are only points
     seg = [i for i in seg if i.size>2]
 
     # Reconnection of segments
-    eps_mn = compute_mn_eps(np.log10(eps_tot),seg)
-    num_points_segs = np.array([i.size/2. for i in seg])
-    ## Initialize array containing start and end point of segments
-    segs = np.array([np.stack([i[:,0],i[:,-1]]).T for i in seg])
+    def reconnect_segments(seg, eps_tot, dis_thresh, angle_thresh, eps_thres, ellp_fac):
+        eps_mn = compute_mn_eps(np.log10(eps_tot),seg)
+        num_points_segs = np.array([i.size/2. for i in seg])
+        segs = np.array([np.stack([i[:,0],i[:,-1]]).T for i in seg])
+        return seg_reconnection(seg,segs,eps_mn,num_points_segs,dis_thresh,
+                           angle_thresh,eps_thres,ellp_fac)
     
-    seg = seg_reconnection(seg,segs,eps_mn,num_points_segs,1.5,
-                           50,eps_thres,ellp_fac=1)
-
-    # Reconnection of segments
-    eps_mn = compute_mn_eps(np.log10(eps_tot),seg)
-    num_points_segs = np.array([i.size/2. for i in seg])
-    ## Initialize array containing start and end point of segments
-    segs = np.array([np.stack([i[:,0],i[:,-1]]).T for i in seg])
-    
-    seg = seg_reconnection(seg,segs,eps_mn,num_points_segs,dis_thres,
-                           angle_thres,eps_thres,ellp_fac=ellp_fac)
+    seg = reconnect_segments(seg, avg_eps_tot, 1.5, 50, eps_thres, 1)
+    seg = reconnect_segments(seg, avg_eps_tot, dis_thres, angle_thres, eps_thres, ellp_fac)
 
     # Filter too short segments
     seg = filter_segs_lmin(seg,lmin)
