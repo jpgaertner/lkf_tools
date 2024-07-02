@@ -783,7 +783,7 @@ def init_prob_matrix(segs, eps_segs, dis_thres, angle_thres, eps_thres,ellp_fac=
         
     return prob_ma
 
-def update_segs(ind_connect,ori_connect,seg,segs,eps_segs,num_points_segs):
+def update_segs(ind_connect, ori_connect, seg, segs, eps_segs, num_points_segs):
     """ Function to update the list of segment seg, array of start
     and end points segs, and the array of mean deformation rates.
 
@@ -806,39 +806,41 @@ def update_segs(ind_connect,ori_connect,seg,segs,eps_segs,num_points_segs):
             eps_segs - updated mean deformation rate of segs_up
             num_points_segs - updated array of the  number of points
                                 of all segments"""
+
+    idx0, idx1 = ind_connect
+    ori0, ori1 = ori_connect
     
     # 1. Update list of segments seg
     #    - Update smaller index element
-    seg[ind_connect[0]] = np.append(seg[ind_connect[0]][:,::int(2*ori_connect[0]-1)],
-                                    seg[ind_connect[1]][:,::int(-2*ori_connect[1]+1)],
-                                    axis=1)
+    seg[idx0] = np.append(seg[idx0][:, ::int(2*ori0-1)],
+                          seg[idx1][:, ::int(-2*ori1+1)], axis=1)
     #    - Remove larger index element
-    seg.pop(ind_connect[1]);
+    seg.pop(idx1)
     
 
     # 2. Update array of end and starting points
     #    - Update smaller index element
-    segs[ind_connect[0]] = np.stack([segs[ind_connect[0]][:,::int(2*ori_connect[0]-1)][:,0],
-                                     segs[ind_connect[1]][:,::int(-2*ori_connect[1]+1)][:,-1]]).T
+    segs[idx0] = np.array([segs[idx0][:, ::int(2*ori0-1)][:, 0],
+                           segs[idx1][:, ::int(-2*ori1+1)][:, -1]]).T
     #    - Remove larger index element
-    segs = np.delete(segs,(ind_connect[1]),axis=0)
+    segs = np.delete(segs, idx1, axis=0)
 
 
     # 3. Update array of mean deformation rates
     #    - Update smaller index element
-    eps_segs[ind_connect[0]] = (((eps_segs[ind_connect[0]]*num_points_segs[ind_connect[0]]) +
-                                 (eps_segs[ind_connect[1]]*num_points_segs[ind_connect[1]]))/
-                                (num_points_segs[ind_connect[0]]+num_points_segs[ind_connect[1]]))
+    total_points = num_points_segs[idx0]+num_points_segs[idx1]
+    eps_segs[idx0] = ((eps_segs[idx0]*num_points_segs[idx0]) +
+                       (eps_segs[idx1]*num_points_segs[idx1])
+                      ) / total_points
     #    - Remove larger index element
-    eps_segs = np.delete(eps_segs,(ind_connect[1]),axis=0)
+    eps_segs = np.delete(eps_segs, idx1, axis=0)
 
 
     # 4. Update array of number of points of all segments
     #    - Update smaller index element
-    num_points_segs[ind_connect[0]] = (num_points_segs[ind_connect[0]] + 
-                                       num_points_segs[ind_connect[1]])
+    num_points_segs[idx0] = total_points
     #    - Remove larger index element
-    num_points_segs = np.delete(num_points_segs,(ind_connect[1]),axis=0)
+    num_points_segs = np.delete(num_points_segs, idx1, axis=0)
 
 
     return seg, segs, eps_segs, num_points_segs
