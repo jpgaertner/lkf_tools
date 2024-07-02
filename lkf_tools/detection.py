@@ -756,7 +756,7 @@ def compute_prob(seg_I,segs,eps_segI,eps_segs,dis_thres,angle_thres,eps_thres,el
     return np.rollaxis(np.stack([prob,ori_segI_all,ori_segs_all]),1)
 
 
-def init_prob_matrix(segs,eps_segs,dis_thres,angle_thres,eps_thres,ellp_fac=1):
+def init_prob_matrix(segs, eps_segs, dis_thres, angle_thres, eps_thres,ellp_fac=1):
     """ Function to initialize the probability matrix given the 
     probability of all possible combinations of segments to belong
     to the same deformation feature. The probabilty matrix is a
@@ -775,11 +775,11 @@ def init_prob_matrix(segs,eps_segs,dis_thres,angle_thres,eps_thres,ellp_fac=1):
     
     # 1. Initialize empty probability matrix
     num_segs = segs.shape[0]
-    prob_ma = np.zeros((num_segs,num_segs,3)) * np.nan
+    prob_ma = np.full((num_segs, num_segs, 3), np.nan)
 
     # 2. Loop over all segments an fill
-    for i_s in range(num_segs-1):
-        prob_ma[i_s,i_s+1:,:] = compute_prob(segs[i_s],segs[i_s+1:],eps_segs[i_s],eps_segs[i_s+1:],dis_thres,angle_thres,eps_thres,ellp_fac=ellp_fac)
+    for i_s in range(num_segs - 1):
+        prob_ma[i_s, i_s + 1:, :] = compute_prob(segs[i_s], segs[i_s+1:], eps_segs[i_s], eps_segs[i_s+1:], dis_thres, angle_thres, eps_thres, ellp_fac=ellp_fac)
         
     return prob_ma
 
