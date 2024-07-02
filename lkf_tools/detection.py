@@ -869,15 +869,14 @@ def update_prob_matrix(prob_ma,ind_connect,segs_up,eps_segs_up,dis_thres,angle_t
            eps_thres - threshold difference in deformation rate 
 
     Output: prob_ma_up - probablility matrics of segs"""
+    idx0, idx1 = ind_connect
 
     # 1. Remove column and row corresponding to the larger index
-    prob_ma = np.delete(np.delete(prob_ma,ind_connect[1],axis=0),
-                        ind_connect[1],axis=1)
+    prob_ma = np.delete(np.delete(prob_ma, idx1,axis=0), idx1, axis=1)
 
     # 2. Reevaluate the probabilty in the row for the lower index
-    i_s = ind_connect[0]
-    prob_ma[i_s,i_s+1:,:] = compute_prob(segs_up[i_s],segs_up[i_s+1:],eps_segs_up[i_s],eps_segs_up[i_s+1:],dis_thres,angle_thres,eps_thres,ellp_fac=ellp_fac)
-    prob_ma[:i_s,i_s,:] = compute_prob(segs_up[i_s],segs_up[:i_s],eps_segs_up[i_s],eps_segs_up[:i_s],dis_thres,angle_thres,eps_thres,ellp_fac=ellp_fac)[:,[0,2,1]]
+    prob_ma[idx0, idx0+1:, :] = compute_prob(segs_up[idx0], segs_up[idx0+1:], eps_segs_up[idx0], eps_segs_up[idx0+1:], dis_thres, angle_thres, eps_thres, ellp_fac)
+    prob_ma[:idx0,idx0,:] = compute_prob(segs_up[idx0], segs_up[:idx0], eps_segs_up[idx0], eps_segs_up[:idx0], dis_thres, angle_thres, eps_thres, ellp_fac)[:, [0, 2, 1]]
 
     return prob_ma
 
