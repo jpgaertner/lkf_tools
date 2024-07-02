@@ -934,41 +934,14 @@ def seg_reconnection(seg,segs,eps_segs,num_points_segs,dis_thres,angle_thres,eps
 
 
 
-
-
-
-
-
-
-
-
-
-
 # --------------- 5. Helper and filter functions ----------------
 # ---------------------------------------------------------------
-
 
 
 def filter_segs_lmin(seg,lmin):
     """ Function to filter all segements in seg where the distance
     between start and end point is below threshold lmin"""
     return [i for i in seg if np.sqrt(np.sum((i[:,0]-i[:,-1])**2))>=lmin]
-        
-
-
-def segs2latlon_rgps(segs,xg0,xg1,yg0,yg1,nxcell,nycell,m=mSSMI()):
-    """ Function that converts index format of detected LKFs to
-    lat,lon coordinates
-    """
-    lon,lat = get_latlon_RGPS(xg0,xg1,yg0,yg1,nxcell,nycell,m=m)
-    segsf = []
-    for iseg in segs:
-        segsf.append(np.concatenate([iseg,
-                                     np.stack([lon[iseg[0],iseg[1]],
-                                               lat[iseg[0],iseg[1]]])],
-                                     axis=0))
-    return segsf
-
 
 def segs2latlon_model(segs,lon,lat):
     """ Function that converts index format of detected LKFs to
@@ -981,24 +954,7 @@ def segs2latlon_model(segs,lon,lat):
                                                lat[iseg[0],iseg[1]]])],
                                      axis=0))
     return segsf
-
-
-
-def segs2eps(segs,epsI,epsII):
-    """ Function that saves for each point of each LKF the deformation
-    rates and attach them to segs.
-    """
-    segsf = []
-    for iseg in segs:
-        segsf.append(np.concatenate([iseg,
-                                     np.stack([epsI[iseg[0].astype('int'),
-                                                    iseg[1].astype('int')],
-                                               epsII[iseg[0].astype('int'),
-                                                     iseg[1].astype('int')]])],
-                                     axis=0))
-    return segsf
    
-    
 def segs2epsvor(segs,epsI,epsII,epsvor):
     """ Function that saves for each point of each LKF the deformation
     rates and attach them to segs (including vorticity!).
@@ -1017,11 +973,8 @@ def segs2epsvor(segs,epsI,epsII,epsvor):
 
 
 
-
-
 # ---------------- 6. Detection functions ------------------------------
 # ------------- ( described in Section 3.1 ) ---------------------------
-
 
 
 def lkf_detect_eps_multday(eps_tot,max_kernel=5,min_kernel=1,
