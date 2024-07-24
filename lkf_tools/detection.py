@@ -253,9 +253,9 @@ def detect_segments(lkf_thin,eps_thres=0.1,max_ind=500):
                 indy = (seg_active[:,1,ind] + iy).astype('int')
                 mask = np.all([indx>=0,indx<nodetect.shape[0],
                                indy>=0, indy<nodetect.shape[1]], axis=0)
-                nodetect_intm = np.zeros((nodetect.shape[0]+2,
-                                          nodetect.shape[1]+2))
-                nodetect_intm[1:-1,1:-1] = nodetect.copy()
+                #nodetect_intm = np.zeros((nodetect.shape[0]+2,
+                #                          nodetect.shape[1]+2))
+                #nodetect_intm[1:-1,1:-1] = nodetect.copy()
                 x[(nodetect_intm[indx+1,indy+1] == 1) & mask] = ix
                 y[(nodetect_intm[indx+1,indy+1] == 1) & mask] = iy
         
