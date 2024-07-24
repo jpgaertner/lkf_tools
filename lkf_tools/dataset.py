@@ -64,7 +64,9 @@ class process_dataset(object):
         for lkfpathseg in str(self.lkfpath.absolute()).split('/')[1:]:
             lkfpath += lkfpathseg + '/'
             if not os.path.exists(lkfpath):
-                os.mkdir(lkfpath)
+                # the try except clause is implemented for parallelization 
+                try: os.mkdir(lkfpath)
+                except: pass
                 
         # Store detection parameters
         self.max_kernel = max_kernel
