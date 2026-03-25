@@ -377,6 +377,7 @@ class process_dataset(object):
         you need to adjust them in the process_dataset function when initializing the lkf_data object.
         '''
 
+        self.data = xr.open_dataset(self.netcdf_file)
         uice = np.array(self.data.U[i,:,:])
         vice = np.array(self.data.V[i,:,:])
         aice = np.array(self.data.A[i,:,:])
