@@ -322,7 +322,8 @@ class process_dataset(object):
 
 
     def calc_eps(self, ind):
-    
+
+        self.data = xr.open_dataset(self.netcdf_file)
         uice = np.array(self.data.U[ind,:,:])
         vice = np.array(self.data.V[ind,:,:])
         aice = np.array(self.data.A[ind,:,:])
