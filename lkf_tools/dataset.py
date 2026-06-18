@@ -28,7 +28,7 @@ from tracking import *
 from rgps import *
 
 @jit
-def calc_eps_body(uice, vice, aice, dxu, dyu, mask, a, b, c, d):
+def calc_eps_body(uice, vice, dxu, dyu):
 
     dudx = ((uice[2:,:]-uice[:-2,:])/(dxu[:-2,:]+dxu[1:-1,:]))[:,1:-1]
     dvdx = ((vice[2:,:]-vice[:-2,:])/(dxu[:-2,:]+dxu[1:-1,:]))[:,1:-1]
@@ -164,6 +164,7 @@ class process_dataset(object):
                     div = self.data.div[it+itr,:,:]
                     shr = self.data.shr[it+itr,:,:]
                     vor = self.data.vor[it+itr,:,:]
+                    eps_tot = np.sqrt(div**2+shr**2)[1:-1,1:-1]
                 else:
                     dudx = ((uice[2:,:]-uice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
                     dvdx = ((vice[2:,:]-vice[:-2,:])/(self.dxu[:-2,:]+self.dxu[1:-1,:]))[:,1:-1]
@@ -174,7 +175,7 @@ class process_dataset(object):
                     shr = np.sqrt((dudx-dvdy)**2 + (dudy + dvdx)**2) * 3600. *24. # in day^-1
                     vor = 0.5*(dudy-dvdx) * 3600. *24. # in day^-1
 
-                eps_tot = np.sqrt(div**2+shr**2)
+                    eps_tot = np.sqrt(div**2+shr**2)
                 
                 # this averages the ice concentration over 2 grid cells in every direction
                 # (originally implemented for np.where(aice_mean>aice_thresh, ...)
@@ -321,12 +322,14 @@ class process_dataset(object):
                     tracked_pairs)
 
 
-    def calc_eps(self, ind):
+    def calc_eps(self, ind, u_ice_int=None, v_ice_int=None):
 
-        self.data = xr.open_dataset(self.netcdf_file)
-        uice = np.array(self.data.U[ind,:,:])
-        vice = np.array(self.data.V[ind,:,:])
-        aice = np.array(self.data.A[ind,:,:])
+        if u_ice_int is not None and v_ice_int is not None:
+            uice, vice = u_ice_int, v_ice_int
+        else:
+            self.data = xr.open_dataset(self.netcdf_file)
+            uice = np.array(self.data.U[ind,:,:])
+            vice = np.array(self.data.V[ind,:,:])
 
         dxu = np.array(self.dxu)
         dyu = np.array(self.dyu)
@@ -337,14 +340,12 @@ class process_dataset(object):
         c = max([0,self.index_x[0][0]-1])
         d = self.index_x[0][-1]+2
 
-        eps_tot, div, shr, vor = calc_eps_body(uice, vice, aice, dxu, dyu, mask, a, b, c, d)
+        eps_tot, div, shr, vor = calc_eps_body(uice, vice, dxu, dyu)
 
         def basin_mask(data):
-            data = np.where((aice[1:-1,1:-1]>0) & (aice[1:-1,1:-1]<=1), data, np.nan)
-
             # Mask Arctic basin and shrink array
             data = np.where(mask[1:-1,1:-1], data, np.nan)
-            data = data[a:b,c:d]
+            data = np.array(data[a:b,c:d])
             data[0,:] = np.nan; data[-1,:] = np.nan
             data[:,0] = np.nan; data[:,-1] = np.nan
             data[1,:] = np.nan; data[-2,:] = np.nan
